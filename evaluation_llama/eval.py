@@ -15,7 +15,8 @@ import numpy as np
 import shortuuid
 
 from tqdm import tqdm
-from datasets import load_dataset
+from datasets import load_dataset, Dataset
+import pandas as pd
 from human_eval.data import read_problems
 
 
@@ -53,8 +54,20 @@ def load_data(task_name, seed,  data_num=10):
     prompt_shots = ''
     if task_name == 'cnndm':
         n_shot = 1
-        data = load_dataset('cnn_dailymail', name='3.0.0', split='test').shuffle(seed=seed).select(range(data_num))
-        shots = load_dataset('cnn_dailymail', name='3.0.0', split='train').shuffle(seed=seed).select(range(n_shot))
+        # Load from local parquet files
+        test_df = pd.read_parquet('/data1/SWIFT/data/test-00000-of-00001.parquet')
+        train_dfs = []
+        for i in range(3):
+            train_df = pd.read_parquet(f'/data1/SWIFT/data/train-0000{i}-of-00003.parquet')
+            train_dfs.append(train_df)
+        train_df = pd.concat(train_dfs, ignore_index=True)
+        
+        # Convert to Dataset and shuffle
+        test_dataset = Dataset.from_pandas(test_df).shuffle(seed=seed).select(range(data_num))
+        train_dataset = Dataset.from_pandas(train_df).shuffle(seed=seed).select(range(n_shot))
+        
+        data = test_dataset
+        shots = train_dataset
         prompt_keys = ['article', 'highlights']
         instructions = ['Article: ', '\nSummary: ']
         for i in range(n_shot):
