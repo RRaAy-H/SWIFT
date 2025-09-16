@@ -54,25 +54,63 @@ def load_data(task_name, seed,  data_num=10):
     prompt_shots = ''
     if task_name == 'cnndm':
         n_shot = 1
-        # Load from local parquet files
-        test_df = pd.read_parquet('/data1/SWIFT/data/test-00000-of-00001.parquet')
-        train_dfs = []
-        for i in range(3):
-            train_df = pd.read_parquet(f'/data1/SWIFT/data/train-0000{i}-of-00003.parquet')
-            train_dfs.append(train_df)
-        train_df = pd.concat(train_dfs, ignore_index=True)
-        
-        # Convert to Dataset and shuffle
-        test_dataset = Dataset.from_pandas(test_df).shuffle(seed=seed).select(range(data_num))
-        train_dataset = Dataset.from_pandas(train_df).shuffle(seed=seed).select(range(n_shot))
-        
-        data = test_dataset
-        shots = train_dataset
-        prompt_keys = ['article', 'highlights']
-        instructions = ['Article: ', '\nSummary: ']
-        for i in range(n_shot):
-            prompt = instructions[0] + shots[i][prompt_keys[0]] + instructions[1] + shots[i][prompt_keys[1]].replace('\n', '') + '\n'
-            prompt_shots += prompt
+        try:
+            # Load from local parquet files
+            test_df = pd.read_parquet('/data1/SWIFT/data/test-00000-of-00001.parquet')
+            train_dfs = []
+            for i in range(3):
+                train_path = f'/data1/SWIFT/data/train-0000{i}-of-00003.parquet'
+                train_df = pd.read_parquet(train_path)
+                train_dfs.append(train_df)
+            train_df = pd.concat(train_dfs, ignore_index=True)
+            
+            # Verify required columns exist
+            required_columns = ['article', 'highlights']
+            for col in required_columns:
+                if col not in test_df.columns:
+                    raise ValueError(f"Column '{col}' not found in test dataset")
+                if col not in train_df.columns:
+                    raise ValueError(f"Column '{col}' not found in train dataset")
+            
+            # Convert to Dataset and shuffle
+            test_dataset = Dataset.from_pandas(test_df).shuffle(seed=seed)
+            train_dataset = Dataset.from_pandas(train_df).shuffle(seed=seed)
+            
+            # Bounds checking
+            available_test = len(test_dataset)
+            available_train = len(train_dataset)
+            
+            if data_num > available_test:
+                logging.warning(f"Requested {data_num} test samples but only {available_test} available. Using {available_test}.")
+                data_num = available_test
+            
+            if n_shot > available_train:
+                logging.warning(f"Requested {n_shot} train samples but only {available_train} available. Using {available_train}.")
+                n_shot = available_train
+            
+            data = test_dataset.select(range(data_num))
+            shots = train_dataset.select(range(n_shot))
+            
+            prompt_keys = ['article', 'highlights']
+            instructions = ['Article: ', '\nSummary: ']
+            for i in range(n_shot):
+                prompt = instructions[0] + shots[i][prompt_keys[0]] + instructions[1] + shots[i][prompt_keys[1]].replace('\n', '') + '\n'
+                prompt_shots += prompt
+                
+        except FileNotFoundError as e:
+            logging.error(f"Local parquet file not found: {e}")
+            logging.error("Falling back to downloading from Hugging Face...")
+            data = load_dataset('cnn_dailymail', name='3.0.0', split='test').shuffle(seed=seed).select(range(data_num))
+            shots = load_dataset('cnn_dailymail', name='3.0.0', split='train').shuffle(seed=seed).select(range(n_shot))
+            prompt_keys = ['article', 'highlights']
+            instructions = ['Article: ', '\nSummary: ']
+            for i in range(n_shot):
+                prompt = instructions[0] + shots[i][prompt_keys[0]] + instructions[1] + shots[i][prompt_keys[1]].replace('\n', '') + '\n'
+                prompt_shots += prompt
+        except Exception as e:
+            logging.error(f"Error loading local parquet files: {e}")
+            raise
+            
     elif task_name == 'humaneval':
         original_data = read_problems()
         for i, task_id in enumerate(original_data):
