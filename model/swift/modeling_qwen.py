@@ -147,8 +147,18 @@ class Qwen3Attention(_Qwen3Attention):
 
         if past_key_value is not None:
             # reuse k, v, self_attention
-            key_states = torch.cat([past_key_value[0], key_states], dim=2)
-            value_states = torch.cat([past_key_value[1], value_states], dim=2)
+            # Handle both KVCache objects and tensor tuples
+            if hasattr(past_key_value[0], 'data'):
+                # past_key_value contains KVCache objects
+                past_key = past_key_value[0].data[:, :, :past_key_value[0].current_length, :]
+                past_value = past_key_value[1].data[:, :, :past_key_value[1].current_length, :]
+            else:
+                # past_key_value contains tensor tuples
+                past_key = past_key_value[0]
+                past_value = past_key_value[1]
+
+            key_states = torch.cat([past_key, key_states], dim=2)
+            value_states = torch.cat([past_value, value_states], dim=2)
 
         past_key_value = (key_states, value_states) if use_cache else None
 
@@ -404,7 +414,13 @@ class Qwen3Model(_Qwen3Model):
         if past_key_values is not None:
             for past_key_value in past_key_values:
                 if past_key_value is not None:
-                    past_key_values_length = past_key_value[0].shape[2]
+                    # Handle both KVCache objects and tensor tuples
+                    if hasattr(past_key_value[0], 'data'):
+                        # past_key_value contains KVCache objects
+                        past_key_values_length = past_key_value[0].current_length.item()
+                    else:
+                        # past_key_value contains tensor tuples
+                        past_key_values_length = past_key_value[0].shape[2]
                     break
             seq_length_with_past = seq_length_with_past + past_key_values_length
 
