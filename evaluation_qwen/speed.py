@@ -4,30 +4,37 @@ import numpy as np
 
 
 def speed(jsonl_file, jsonl_file_base, datanum=10, report=True, report_sample=True):
+    # Load and filter main JSONL file - only keep evaluation results with 'choices'
     data = []
     with open(jsonl_file, 'r', encoding='utf-8') as file:
         for line in file:
             json_obj = json.loads(line)
-            data.append(json_obj)
+            # Filter out summary objects that don't have 'choices' structure
+            if "choices" in json_obj:
+                data.append(json_obj)
 
     speeds=[]
     accept_lengths_list = []
-    for datapoint in data[:datanum]:
+    # Process only the available data, up to datanum
+    processed_count = min(len(data), datanum)
+    for datapoint in data[:processed_count]:
         tokens = sum(datapoint["choices"][0]['new_tokens'])
         times = sum(datapoint["choices"][0]['wall_time'])
         accept_lengths_list.extend(datapoint["choices"][0]['accept_lengths'])
         speeds.append(tokens/times)
 
-
-    data = []
+    # Load and filter baseline JSONL file - only keep evaluation results with 'choices'
+    data_base = []
     with open(jsonl_file_base, 'r', encoding='utf-8') as file:
         for line in file:
             json_obj = json.loads(line)
-            data.append(json_obj)
-
+            # Filter out summary objects that don't have 'choices' structure
+            if "choices" in json_obj:
+                data_base.append(json_obj)
 
     speeds0=[]
-    for datapoint in data[:datanum]:
+    # Process only the available baseline data, up to the same count as main data
+    for datapoint in data_base[:processed_count]:
         tokens = sum(datapoint["choices"][0]['new_tokens'])
         times = sum(datapoint["choices"][0]['wall_time'])
         speeds0.append(tokens/times)
@@ -37,7 +44,7 @@ def speed(jsonl_file, jsonl_file_base, datanum=10, report=True, report_sample=Tr
     speedup_ratio = np.array(speeds).mean()/np.array(speeds0).mean()
 
     if report_sample:
-        for i in range(datanum):
+        for i in range(processed_count):
             print("Tokens per second: ", speeds[i])
             print("Tokens per second for the baseline: ", speeds0[i])
             print("Sample Speedup: {}".format(speeds[i]/speeds0[i]))
@@ -45,6 +52,7 @@ def speed(jsonl_file, jsonl_file_base, datanum=10, report=True, report_sample=Tr
 
     if report:
         print("="*30, "Overall: ", "="*30)
+        print(f"Processed {processed_count} samples (requested {datanum})")
         print("#Mean accepted tokens: ", np.mean(accept_lengths_list))
         print('Tokens per second: ', tokens_per_second)
         print('Tokens per second for the baseline: ', tokens_per_second_baseline)
