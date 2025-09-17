@@ -13,11 +13,10 @@ import torch
 import random
 import numpy as np
 import shortuuid
-
+import pandas as pd
 from tqdm import tqdm
-from datasets import load_dataset
+from datasets import load_dataset, Dataset
 from human_eval.data import read_problems
-
 
 def seed_everything(seed=64):
     random.seed(seed)
