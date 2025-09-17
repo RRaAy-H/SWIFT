@@ -36,8 +36,7 @@ from transformers.models.llama.modeling_llama import LlamaAttention as _LlamaAtt
 from transformers.models.llama.modeling_llama import LlamaModel as _LlamaModel
 from transformers.models.llama.modeling_llama import LlamaForCausalLM as _LlamaForCausalLM
 from transformers.models.llama.modeling_llama import apply_rotary_pos_emb, repeat_kv
-from transformers.models.llama.modeling_llama import LlamaRotaryEmbedding, LlamaLinearScalingRotaryEmbedding, \
-    LlamaDynamicNTKScalingRotaryEmbedding
+from transformers.models.llama.modeling_llama import LlamaRotaryEmbedding
 
 logger = logging.get_logger(__name__)
 
@@ -127,14 +126,16 @@ class LlamaAttention(_LlamaAttention):
             scaling_type = self.config.rope_scaling["type"]
             scaling_factor = self.config.rope_scaling["factor"]
             if scaling_type == "linear":
-                self.rotary_emb = LlamaLinearScalingRotaryEmbedding(
-                    self.head_dim, base=getattr(self.config, 'rope_theta', 10000),
-                    max_position_embeddings=self.max_position_embeddings, scaling_factor=scaling_factor
+                self.rotary_emb = LlamaRotaryEmbedding(
+                    self.head_dim,
+                    base=getattr(self.config, 'rope_theta', 10000),
+                    max_position_embeddings=self.max_position_embeddings
                 )
             elif scaling_type == "dynamic":
-                self.rotary_emb = LlamaDynamicNTKScalingRotaryEmbedding(
-                    self.head_dim, base=getattr(self.config, 'rope_theta', 10000),
-                    max_position_embeddings=self.max_position_embeddings, scaling_factor=scaling_factor
+                self.rotary_emb = LlamaRotaryEmbedding(
+                    self.head_dim,
+                    base=getattr(self.config, 'rope_theta', 10000),
+                    max_position_embeddings=self.max_position_embeddings
                 )
             else:
                 raise ValueError(f"Unknown RoPE scaling type {scaling_type}")
