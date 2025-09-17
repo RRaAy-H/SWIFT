@@ -116,7 +116,7 @@ def initialize_past_key_values(model):
                 startnum * 2,
                 batch_size,
                 config.num_key_value_heads,
-                config.max_position_embeddings,
+                min(config.max_position_embeddings, 8192),  # Limit cache size to reduce memory
                 head_dim,
                 device=startdevice,
                 dtype=model.dtype,
@@ -129,7 +129,7 @@ def initialize_past_key_values(model):
         startnum * 2,
         batch_size,
         config.num_key_value_heads,
-        config.max_position_embeddings,
+        min(config.max_position_embeddings, 8192),  # Limit cache size to reduce memory
         head_dim,
         device=startdevice,
         dtype=model.dtype,
