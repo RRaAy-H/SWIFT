@@ -88,6 +88,16 @@ def initialize_past_key_values(model):
     config = model.config
     # Initializing the batch size to 1, this can be modified if different batch sizes are required
     batch_size = 1
+
+    # Get the actual head dimension from the model's attention layer
+    try:
+        # Extract head_dim from the first attention layer
+        first_layer = model.model.layers[0].self_attn if hasattr(model, 'model') else model.layers[0].self_attn
+        head_dim = first_layer.head_dim
+    except:
+        # Fallback to config calculation if direct access fails
+        head_dim = config.hidden_size // config.num_attention_heads
+
     # Initializing a tensor to store past keys and values for all layers
 
     devices = []
@@ -107,7 +117,7 @@ def initialize_past_key_values(model):
                 batch_size,
                 config.num_key_value_heads,
                 config.max_position_embeddings,
-                config.hidden_size // config.num_attention_heads,
+                head_dim,
                 device=startdevice,
                 dtype=model.dtype,
             )
@@ -120,7 +130,7 @@ def initialize_past_key_values(model):
         batch_size,
         config.num_key_value_heads,
         config.max_position_embeddings,
-        config.hidden_size // config.num_attention_heads,
+        head_dim,
         device=startdevice,
         dtype=model.dtype,
     )
