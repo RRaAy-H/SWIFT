@@ -165,9 +165,9 @@ class Qwen3Attention(_Qwen3Attention):
 
         attn_weights = torch.matmul(query_states, key_states.transpose(2, 3)) * self.scaling
 
-        if attn_weights.size() != (bsz, self.num_attention_heads, q_len, key_states.shape[-2]):
+        if attn_weights.size() != (bsz, self.config.num_attention_heads, q_len, key_states.shape[-2]):
             raise ValueError(
-                f"Attention weights should be of size {(bsz, self.num_attention_heads, q_len, key_states.shape[-2])}, but is"
+                f"Attention weights should be of size {(bsz, self.config.num_attention_heads, q_len, key_states.shape[-2])}, but is"
                 f" {attn_weights.size()}"
             )
 
@@ -182,9 +182,9 @@ class Qwen3Attention(_Qwen3Attention):
         attn_weights = nn.functional.softmax(attn_weights, dim=-1, dtype=torch.float32).to(query_states.dtype)
         attn_output = torch.matmul(attn_weights, value_states)
 
-        if attn_output.size() != (bsz, self.num_attention_heads, q_len, self.head_dim):
+        if attn_output.size() != (bsz, self.config.num_attention_heads, q_len, self.head_dim):
             raise ValueError(
-                f"`attn_output` should be of size {(bsz, self.num_attention_heads, q_len, self.head_dim)}, but is"
+                f"`attn_output` should be of size {(bsz, self.config.num_attention_heads, q_len, self.head_dim)}, but is"
                 f" {attn_output.size()}"
             )
 
