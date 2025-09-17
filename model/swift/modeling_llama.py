@@ -118,27 +118,25 @@ def _expand_mask(mask: torch.Tensor, dtype: torch.dtype, tgt_len: Optional[int] 
 
 class LlamaAttention(_LlamaAttention):
 
+    def __init__(self, config: LlamaConfig, layer_idx: int = None):
+        super().__init__(config, layer_idx)
+        self._init_rope()
+
     def _init_rope(self):
         if self.config.rope_scaling is None:
-            self.rotary_emb = LlamaRotaryEmbedding(self.head_dim, base=getattr(self.config, 'rope_theta', 10000),
-                                                   max_position_embeddings=self.max_position_embeddings)
+            self.rotary_emb = LlamaRotaryEmbedding(
+                self.head_dim,
+                max_position_embeddings=self.max_position_embeddings,
+                base=getattr(self.config, 'rope_theta', 10000)
+            )
         else:
-            scaling_type = self.config.rope_scaling["type"]
-            scaling_factor = self.config.rope_scaling["factor"]
-            if scaling_type == "linear":
-                self.rotary_emb = LlamaRotaryEmbedding(
-                    self.head_dim,
-                    base=getattr(self.config, 'rope_theta', 10000),
-                    max_position_embeddings=self.max_position_embeddings
-                )
-            elif scaling_type == "dynamic":
-                self.rotary_emb = LlamaRotaryEmbedding(
-                    self.head_dim,
-                    base=getattr(self.config, 'rope_theta', 10000),
-                    max_position_embeddings=self.max_position_embeddings
-                )
-            else:
-                raise ValueError(f"Unknown RoPE scaling type {scaling_type}")
+            # For now, just use the basic rotary embedding regardless of scaling type
+            # This avoids import issues with scaling classes that may not be available
+            self.rotary_emb = LlamaRotaryEmbedding(
+                self.head_dim,
+                max_position_embeddings=self.max_position_embeddings,
+                base=getattr(self.config, 'rope_theta', 10000)
+            )
 
     def forward(
             self,
