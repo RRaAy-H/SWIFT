@@ -189,7 +189,7 @@ class Qwen3Attention(_Qwen3Attention):
             )
 
         attn_output = attn_output.transpose(1, 2).contiguous()
-        attn_output = attn_output.reshape(bsz, q_len, self.config.hidden_size)
+        attn_output = attn_output.reshape(bsz, q_len, -1)
         attn_output = self.o_proj(attn_output)
 
         if not output_attentions:
